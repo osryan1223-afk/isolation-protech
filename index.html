@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Isolation Protech - Division Montreal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+html,body{margin:0;background:#FAF6EF}
+</style>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ====== BRANCHEMENT BASE DE DONNÉES ====== */
+const SUPABASE_URL = "https://dmdhiucjgsgpdlwndzis.supabase.co";
+const SUPABASE_ANON_KEY = "COLLE_ICI_TA_CLE_ANON"; /* <-- remplace par ta clé anon (eyJ...) */
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* ========================================= */
+
+function Svg(p){return <svg width={p.size||20} height={p.size||20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.strokeWidth||1.8} strokeLinecap="round" strokeLinejoin="round" style={p.style}>{p.children}</svg>;}
+const Calculator=(p)=><Svg {...p}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="12" y1="15" x2="12.01" y2="15"/></Svg>;
+const Wallet=(p)=><Svg {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/></Svg>;
+const SlidersHorizontal=(p)=><Svg {...p}><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/></Svg>;
+const Banknote=(p)=><Svg {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/></Svg>;
+const PiggyBank=(p)=><Svg {...p}><ellipse cx="12" cy="7" rx="8" ry="3"/><path d="M4 7v6c0 1.7 3.6 3 8 3s8-1.3 8-3V7"/><path d="M4 13v4c0 1.7 3.6 3 8 3s8-1.3 8-3v-4"/></Svg>;
+const Plus=(p)=><Svg {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Svg>;
+const Trash2=(p)=><Svg {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></Svg>;
+const Save=(p)=><Svg {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></Svg>;
+const ChevronLeft=(p)=><Svg {...p}><polyline points="15 18 9 12 15 6"/></Svg>;
+const ChevronRight=(p)=><Svg {...p}><polyline points="9 18 15 12 9 6"/></Svg>;
+const ChevronDown=(p)=><Svg {...p}><polyline points="6 9 12 15 18 9"/></Svg>;
+const Download=(p)=><Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></Svg>;
+const LogOut=(p)=><Svg {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Svg>;
+
+
+/* -------------------- Palette « registre de chantier » -------------------- */
+const C = {
+  ink: "#15181E", paper: "#FAF6EF", panel: "#FFFFFF", kraft: "#EFE6D2",
+  line: "#E4DAC6", lineSoft: "#EDE6D6", amber: "#E0930B", amberDeep: "#A96C00",
+  slate: "#49525F", muted: "#8C8676", green: "#1E7F46", red: "#C23B34",
+};
+const grotesk = "'Space Grotesk', system-ui, sans-serif";
+const mono = "'Space Mono', monospace";
+
+const money = new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => money.format(isFinite(n) ? n : 0);
+const num = (v) => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+
+/* ------------------------------ Semaines ------------------------------ */
+function mondayOf(date) {
+  const d = new Date(date); const day = (d.getDay() + 6) % 7;
+  d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - day); return d;
+}
+const weekKeyOf = (date) => mondayOf(date).toISOString().slice(0, 10);
+function shiftWeek(key, dw) { const d = new Date(key + "T00:00:00"); d.setDate(d.getDate() + dw * 7); return weekKeyOf(d); }
+function weekLabel(key) {
+  const s = new Date(key + "T00:00:00"); const e = new Date(s); e.setDate(e.getDate() + 6);
+  const f = (d) => d.toLocaleDateString("fr-CA", { day: "numeric", month: "short" });
+  return `${f(s)} au ${f(e)}`;
+}
+
+/* ------------------------------- Défauts ------------------------------- */
+const DEFAULT_SETTINGS = {
+  costs: { sac: "", styrovent: "", carton: "" },
+  fixedFees: [
+    { id: "rbq", label: "Frais RBQ", amount: "425" },
+    { id: "machine", label: "Machine à souffler", amount: "" },
+    { id: "camion", label: "Camion", amount: "" },
+    { id: "gaz", label: "Gaz", amount: "" },
+    { id: "pub", label: "Publicité", amount: "" },
+    { id: "secr", label: "Secrétaire", amount: "" },
+    { id: "divers", label: "Frais divers", amount: "" },
+  ],
+  roster: {
+    installateurs: [],
+    secretaires: [],
+    divers: [],
+    vendeurs: [{ id: "v-matthew", name: "Matthew" }, { id: "v-ryan", name: "Ryan" }],
+  },
+};
+const blankWeek = () => ({
+  installJobs: {}, installExtras: {}, secOverride: {}, diversOverride: {}, extraDivers: [],
+  sacsCount: "", sacsCost: "", machine: "", camion: "", gaz: "", publicite: "",
+  payProtech: { caOverride: "", payeParProtech: [], cashRecu: [] },
+  avances: [],
+});
+
+/* --------------------------- Calculs partagés -------------------------- */
+function computeJob(job, s) {
+  const cSac = num(s.costs.sac) * num(job.sacs);
+  const cStyro = num(s.costs.styrovent) * num(job.styrovents);
+  const cCarton = num(s.costs.carton) * num(job.cartons);
+  const materiaux = cSac + cStyro + cCarton;
+  const mainOeuvre = num(job.mainOeuvre);
+  const fraisFixes = s.fixedFees.reduce((a, f) => a + num(f.amount), 0);
+  const coutJob = materiaux + mainOeuvre + fraisFixes;
+  const vente = num(job.vente);
+  const profit = vente > 0 ? vente - coutJob : 0; // = commission du vendeur
+  return { cSac, cStyro, cCarton, materiaux, mainOeuvre, fraisFixes, coutJob, vente, profit };
+}
+function weekBreakdown(w, roster) {
+  w = w || blankWeek(); roster = roster || {};
+  const jobsOf = (id) => num((w.installJobs || {})[id] || 0);
+  const installers = (roster.installateurs || []).map((i) => {
+    const jobs = jobsOf(i.id);
+    const ownPay = num(i.rate) * jobs;
+    const extraList = (w.installExtras || {})[i.id] || [];
+    const extras = extraList.reduce((a, x) => a + num(x.amount), 0);
+    const overrideEarned = (roster.installateurs || [])
+      .filter((b) => b.recruiterId && b.recruiterId === i.id)
+      .reduce((a, b) => a + num(b.overridePerJob) * jobsOf(b.id), 0);
+    return { id: i.id, name: i.name || "Installateur", rate: num(i.rate), jobs, ownPay, extras, extraList, overrideEarned, pay: ownPay + extras + overrideEarned };
+  });
+  const secs = (roster.secretaires || []).map((s) => {
+    const o = (w.secOverride || {})[s.id];
+    return { id: s.id, name: s.name || "Secrétaire", weekly: num(s.weekly), pay: o !== undefined ? num(o) : num(s.weekly) };
+  });
+  const divers = (roster.divers || []).map((d) => {
+    const o = (w.diversOverride || {})[d.id];
+    return { id: d.id, label: d.label || "Divers", def: num(d.amount), pay: o !== undefined ? num(o) : num(d.amount) };
+  });
+  const extra = (w.extraDivers || []).map((r) => ({ id: r.id, label: r.label || "Divers", pay: num(r.amount) }));
+  const sacsCost = num(w.sacsCost), machine = num(w.machine), camion = num(w.camion), gaz = num(w.gaz), publicite = num(w.publicite);
+  const sum = (a) => a.reduce((x, y) => x + y.pay, 0);
+  const total = sum(installers) + sum(secs) + sum(divers) + sum(extra) + sacsCost + machine + camion + gaz + publicite;
+  return { installers, secs, divers, extra, sacsCount: num(w.sacsCount), sacsCost, machine, camion, gaz, publicite, total };
+}
+function computePayProtech(w, ventes) {
+  const pp = (w && w.payProtech) || { caOverride: "", payeParProtech: [], cashRecu: [] };
+  const ca = pp.caOverride !== "" && pp.caOverride !== undefined ? num(pp.caOverride) : ventes;
+  const paye = (pp.payeParProtech || []).reduce((a, r) => a + num(r.amount), 0);
+  const cash = (pp.cashRecu || []).reduce((a, r) => a + num(r.amount), 0);
+  return { ca, paye, cash, doit: ca - paye - cash };
+}
+
+/* ------------------------------ UI helpers ----------------------------- */
+function Eyebrow({ children }) {
+  return <div style={{ fontFamily: grotesk, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, fontWeight: 600 }}>{children}</div>;
+}
+function TextInput({ value, onChange, placeholder, flex }) {
+  return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+    style={{ flex, minWidth: 0, width: flex ? undefined : "100%", border: `1px solid ${C.line}`, borderRadius: 10, outline: "none", padding: "12px", fontFamily: grotesk, fontSize: 14, color: C.ink, background: C.panel, boxSizing: "border-box" }} />;
+}
+function AmountBox({ value, onChange, prefix = "$", width, placeholder = "0" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, width }}>
+      <span style={{ padding: "0 8px", color: C.muted, fontFamily: mono, fontSize: 14 }}>{prefix}</span>
+      <input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        style={{ border: "none", outline: "none", width: "100%", padding: "12px 10px 12px 0", fontFamily: mono, fontSize: 15, color: C.ink, background: "transparent" }} />
+    </div>
+  );
+}
+function MoneyField({ label, value, onChange, prefix = "$" }) {
+  return (
+    <label style={{ display: "block", marginBottom: 14 }}>
+      <div style={{ fontFamily: grotesk, fontSize: 13, color: C.slate, marginBottom: 6, fontWeight: 500 }}>{label}</div>
+      <AmountBox value={value} onChange={onChange} prefix={prefix} width="100%" />
+    </label>
+  );
+}
+function CountField({ label, value, onChange }) {
+  return (
+    <label style={{ display: "block" }}>
+      <div style={{ fontFamily: grotesk, fontSize: 13, color: C.slate, marginBottom: 6, fontWeight: 500 }}>{label}</div>
+      <input inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value)} placeholder="0"
+        style={{ border: `1px solid ${C.line}`, borderRadius: 10, outline: "none", width: "100%", padding: "13px 12px", fontFamily: mono, fontSize: 16, color: C.ink, background: C.panel, boxSizing: "border-box" }} />
+    </label>
+  );
+}
+function Select({ value, onChange, children }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        style={{ width: "100%", appearance: "none", WebkitAppearance: "none", border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 34px 12px 12px", fontFamily: grotesk, fontSize: 14.5, color: C.ink, background: C.panel, outline: "none" }}>
+        {children}
+      </select>
+      <ChevronDown size={17} style={{ position: "absolute", right: 11, top: 13, color: C.muted, pointerEvents: "none" }} />
+    </div>
+  );
+}
+function LedgerRow({ label, value, strong, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", padding: "7px 0" }}>
+      <span style={{ fontFamily: grotesk, fontSize: strong ? 14 : 13.5, color: strong ? C.ink : C.slate, fontWeight: strong ? 600 : 400, whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ flex: 1, borderBottom: `1px dotted ${C.line}`, margin: "0 8px", transform: "translateY(-3px)" }} />
+      <span style={{ fontFamily: mono, fontSize: strong ? 15 : 14, color: color || (strong ? C.ink : C.slate), fontWeight: strong ? 700 : 400, whiteSpace: "nowrap" }}>{value}</span>
+    </div>
+  );
+}
+function Panel({ children, style }) { return <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 18, marginBottom: 16, ...style }}>{children}</div>; }
+function Section({ title, children }) { return <Panel><Eyebrow>{title}</Eyebrow><div style={{ height: 12 }} />{children}</Panel>; }
+function IconBtn({ onClick, children, label }) { return <button onClick={onClick} className="pop" aria-label={label} style={{ background: "transparent", border: "none", color: C.muted, padding: 4 }}>{children}</button>; }
+function AddButton({ onClick, children }) {
+  return <button onClick={onClick} className="pop" style={{ marginTop: 4, background: C.kraft, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px", width: "100%", fontFamily: grotesk, fontWeight: 600, fontSize: 14, color: C.slate, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Plus size={16} /> {children}</button>;
+}
+function Hint({ children }) { return <div style={{ background: C.paper, borderRadius: 10, padding: "10px 12px", fontFamily: grotesk, fontSize: 12.5, color: C.muted }}>{children}</div>; }
+function Line({ label, sub, children }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+      <span style={{ fontFamily: grotesk, fontSize: 14, color: C.slate }}>{label}{sub && <span style={{ color: C.muted, fontSize: 12 }}> · {sub}</span>}</span>
+      {children}
+    </div>
+  );
+}
+function WeekNav({ week, setWeek }) {
+  const isCurrent = week === weekKeyOf(new Date());
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "8px 8px", marginBottom: 16 }}>
+      <IconBtn onClick={() => setWeek(shiftWeek(week, -1))} label="Semaine précédente"><ChevronLeft size={22} /></IconBtn>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontFamily: grotesk, fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, fontWeight: 600 }}>Semaine · lun → dim</div>
+        <div style={{ fontFamily: grotesk, fontWeight: 700, fontSize: 15, color: C.ink, marginTop: 1 }}>{weekLabel(week)}</div>
+        {!isCurrent && <button onClick={() => setWeek(weekKeyOf(new Date()))} style={{ background: "transparent", border: "none", color: C.amberDeep, fontFamily: grotesk, fontSize: 11.5, fontWeight: 600, marginTop: 1, padding: 0 }}>Revenir à cette semaine</button>}
+      </div>
+      <IconBtn onClick={() => setWeek(shiftWeek(week, 1))} label="Semaine suivante"><ChevronRight size={22} /></IconBtn>
+    </div>
+  );
+}
+function ExtraRows({ rows, onChange, placeholder, addLabel }) {
+  const upd = (id, key, v) => onChange(rows.map((r) => (r.id === id ? { ...r, [key]: v } : r)));
+  const add = () => onChange([...rows, { id: "d" + Date.now() + Math.floor(Math.random() * 999), label: "", amount: "" }]);
+  const del = (id) => onChange(rows.filter((r) => r.id !== id));
+  return (
+    <>
+      {rows.map((r) => (
+        <div key={r.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+          <TextInput value={r.label} onChange={(v) => upd(r.id, "label", v)} placeholder={placeholder} flex={1} />
+          <AmountBox value={r.amount} onChange={(v) => upd(r.id, "amount", v)} width={110} />
+          <IconBtn onClick={() => del(r.id)} label="Supprimer"><Trash2 size={17} /></IconBtn>
+        </div>
+      ))}
+      <AddButton onClick={add}>{addLabel}</AddButton>
+    </>
+  );
+}
+
+/* --------------------------------- App --------------------------------- */
+function CalculatorApp({ onSignOut }) {
+  const [tab, setTab] = useState("job");
+  const [loaded, setLoaded] = useState(false);
+  const [week, setWeek] = useState(weekKeyOf(new Date()));
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [expensesByWeek, setExpensesByWeek] = useState({});
+  const [jobs, setJobs] = useState([]);
+  const [current, setCurrent] = useState({ name: "", vente: "", sacs: "", styrovents: "", cartons: "", mainOeuvre: "", vendeurId: "" });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await db.from("app_state").select("key,value").in("key", ["settings", "expenses", "jobs"]);
+        if (!error && data) {
+          for (const rowd of data) {
+            if (rowd.key === "settings" && rowd.value) setSettings({ ...DEFAULT_SETTINGS, ...rowd.value, roster: { ...DEFAULT_SETTINGS.roster, ...(rowd.value.roster || {}) } });
+            if (rowd.key === "expenses" && rowd.value) setExpensesByWeek(rowd.value);
+            if (rowd.key === "jobs" && Array.isArray(rowd.value)) setJobs(rowd.value);
+          }
+        }
+      } finally { setLoaded(true); }
+    })();
+  }, []);
+  const saveTimers = useRef({});
+  const save = (key, value) => {
+    clearTimeout(saveTimers.current[key]);
+    saveTimers.current[key] = setTimeout(async () => {
+      try { await db.from("app_state").upsert({ key, value, updated_at: new Date().toISOString() }); } catch (e) {}
+    }, 500);
+  };
+  useEffect(() => { if (loaded) save("settings", settings); }, [settings, loaded]);
+  useEffect(() => { if (loaded) save("expenses", expensesByWeek); }, [expensesByWeek, loaded]);
+  useEffect(() => { if (loaded) save("jobs", jobs); }, [jobs, loaded]);
+
+  const calc = useMemo(() => computeJob(current, settings), [current, settings]);
+  const weekJobs = useMemo(() => jobs.filter((j) => j.week === week), [jobs, week]);
+  const exp = expensesByWeek[week] || blankWeek();
+  const bd = useMemo(() => weekBreakdown(exp, settings.roster), [exp, settings.roster]);
+  const vendeurs = settings.roster.vendeurs || [];
+  const vName = (id) => (vendeurs.find((v) => v.id === id) || {}).name || "Non assigné";
+
+  const ventes = useMemo(() => weekJobs.reduce((a, j) => a + (j.result.vente || 0), 0), [weekJobs]);
+  const profitJobs = useMemo(() => weekJobs.reduce((a, j) => a + (j.result.profit || 0), 0), [weekJobs]);
+  const payProtech = useMemo(() => computePayProtech(exp, ventes), [exp, ventes]);
+  const weekStats = {
+    ventes, profit: profitJobs, depenses: bd.total, nb: weekJobs.length,
+    coutReelMoyen: weekJobs.length ? bd.total / weekJobs.length : 0, cashNet: ventes - bd.total,
+  };
+
+  const addJob = () => {
+    if (num(current.vente) <= 0) return;
+    const c = computeJob(current, settings);
+    setJobs([{ id: Date.now(), name: current.name || "Job sans nom", date: new Date().toISOString(), week, vendeurId: current.vendeurId || "",
+      result: { vente: c.vente, coutJob: c.coutJob, profit: c.profit } }, ...jobs]);
+    setCurrent({ name: "", vente: "", sacs: "", styrovents: "", cartons: "", mainOeuvre: "", vendeurId: current.vendeurId || "" });
+  };
+  const delJob = (id) => setJobs(jobs.filter((j) => j.id !== id));
+  const setWeekExp = (updater) => setExpensesByWeek((prev) => { const cur = prev[week] || blankWeek(); return { ...prev, [week]: updater({ ...cur }) }; });
+  const downloadPDF = () => { try { window.print(); } catch (e) {} };
+  const profitColor = calc.profit > 0 ? C.green : calc.profit < 0 ? C.red : C.slate;
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.paper, color: C.ink, fontFamily: grotesk }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+        * { -webkit-tap-highlight-color: transparent; }
+        input::placeholder { color: ${C.muted}; opacity: .55; }
+        select, button { cursor: pointer; }
+        input:focus, select:focus { box-shadow: 0 0 0 3px rgba(224,147,11,.18); }
+        @media (prefers-reduced-motion: no-preference) { .pop { transition: transform .12s ease; } .pop:active { transform: scale(.97); } }
+        .report { display: none; }
+        @media print { .app-ui { display: none !important; } .report { display: block !important; } @page { margin: 14mm; } }
+      `}</style>
+
+      <div className="app-ui" style={{ paddingBottom: 100 }}>
+        <header style={{ background: C.ink, color: C.paper, padding: "20px 20px 22px", borderBottomLeftRadius: 22, borderBottomRightRadius: 22, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 25, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.1 }}>Isolation Protech</div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: "rgba(250,246,239,.65)", marginTop: 3 }}>Division Montréal</div>
+          </div>
+          <button onClick={onSignOut} className="pop" aria-label="Déconnexion" style={{ background: "rgba(250,246,239,.12)", border: "none", color: C.paper, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "center", gap: 6, fontFamily: grotesk, fontSize: 12.5, fontWeight: 600 }}>
+            <LogOut size={16} /> Sortir
+          </button>
+        </header>
+
+        <main style={{ maxWidth: 560, margin: "0 auto", padding: "18px 16px 0" }}>
+          {tab === "job" && <JobTab current={current} setCurrent={setCurrent} calc={calc} settings={settings} vendeurs={vendeurs} vName={vName} profitColor={profitColor} addJob={addJob} weekJobs={weekJobs} delJob={delJob} week={week} setWeek={setWeek} weekStats={weekStats} />}
+          {tab === "depenses" && <ExpensesTab week={week} setWeek={setWeek} exp={exp} setWeekExp={setWeekExp} roster={settings.roster} bd={bd} weekStats={weekStats} />}
+          {tab === "protect" && <PayProtechTab week={week} setWeek={setWeek} exp={exp} setWeekExp={setWeekExp} payProtech={payProtech} ventes={ventes} downloadPDF={downloadPDF} />}
+          {tab === "profit" && <ProfitTab week={week} setWeek={setWeek} weekJobs={weekJobs} vendeurs={vendeurs} exp={exp} setWeekExp={setWeekExp} totalProfit={profitJobs} />}
+          {tab === "reglages" && <SettingsTab settings={settings} setSettings={setSettings} />}
+        </main>
+
+        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.panel, borderTop: `1px solid ${C.line}`, display: "flex", padding: "8px 2px calc(8px + env(safe-area-inset-bottom))", justifyContent: "space-around", zIndex: 20 }}>
+          {[
+            { id: "job", label: "Job", Icon: Calculator },
+            { id: "depenses", label: "Dépenses", Icon: Wallet },
+            { id: "protect", label: "Protech", Icon: Banknote },
+            { id: "profit", label: "Profit", Icon: PiggyBank },
+            { id: "reglages", label: "Réglages", Icon: SlidersHorizontal },
+          ].map(({ id, label, Icon }) => {
+            const active = tab === id;
+            return (
+              <button key={id} onClick={() => setTab(id)} className="pop" style={{ background: "transparent", border: "none", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 0", color: active ? C.amberDeep : C.muted }}>
+                <Icon size={19} strokeWidth={active ? 2.4 : 1.8} />
+                <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500 }}>{label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <PrintReport week={week} weekJobs={weekJobs} bd={bd} weekStats={weekStats} payProtech={payProtech} />
+    </div>
+  );
+}
+
+/* ------------------------------ Onglet Job ----------------------------- */
+function JobTab({ current, setCurrent, calc, settings, vendeurs, vName, profitColor, addJob, weekJobs, delJob, week, setWeek, weekStats }) {
+  const set = (k) => (v) => setCurrent((c) => ({ ...c, [k]: v }));
+  return (
+    <>
+      <div style={{ background: C.ink, borderRadius: 18, padding: "20px 20px 22px", marginBottom: 16 }}>
+        <div style={{ color: C.amber, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Profit de la job</div>
+        <div style={{ fontFamily: mono, fontSize: 40, fontWeight: 700, lineHeight: 1.05, marginTop: 6, color: calc.profit >= 0 ? "#7BD79E" : "#F0908A" }}>{fmt(calc.profit)}</div>
+        <div style={{ display: "flex", gap: 20, marginTop: 12, flexWrap: "wrap" }}>
+          <MiniStat label="Vente" value={fmt(calc.vente)} />
+          <MiniStat label="Coût job" value={fmt(calc.coutJob)} />
+          <MiniStat label="Vendeur" value={current.vendeurId ? vName(current.vendeurId) : "—"} />
+        </div>
+      </div>
+
+      <Section title="Entrées de la job">
+        <MoneyField label="Montant de la vente" value={current.vente} onChange={set("vente")} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <CountField label="Sacs" value={current.sacs} onChange={set("sacs")} />
+          <CountField label="Styrovents" value={current.styrovents} onChange={set("styrovents")} />
+          <CountField label="Cartons" value={current.cartons} onChange={set("cartons")} />
+        </div>
+        <MoneyField label="Main d'œuvre (installateurs)" value={current.mainOeuvre} onChange={set("mainOeuvre")} />
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: grotesk, fontSize: 13, color: C.slate, marginBottom: 6, fontWeight: 500 }}>Vendeur</div>
+          <Select value={current.vendeurId} onChange={set("vendeurId")}>
+            <option value="">— choisir un vendeur —</option>
+            {vendeurs.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </Select>
+        </div>
+        <label style={{ display: "block" }}>
+          <div style={{ fontFamily: grotesk, fontSize: 13, color: C.slate, marginBottom: 6, fontWeight: 500 }}>Nom / adresse (optionnel)</div>
+          <TextInput value={current.name} onChange={set("name")} placeholder="Ex. 123 rue Principale" />
+        </label>
+      </Section>
+
+      <Section title="Décorticage du coût">
+        <LedgerRow label={`Sacs de laine (${num(current.sacs) || 0})`} value={fmt(calc.cSac)} />
+        <LedgerRow label={`Styrovents (${num(current.styrovents) || 0})`} value={fmt(calc.cStyro)} />
+        <LedgerRow label={`Cartons (${num(current.cartons) || 0})`} value={fmt(calc.cCarton)} />
+        <LedgerRow label="Sous-total matériaux" value={fmt(calc.materiaux)} strong />
+        <LedgerRow label="Main d'œuvre" value={fmt(calc.mainOeuvre)} />
+        {settings.fixedFees.map((f) => <LedgerRow key={f.id} label={f.label || "Frais"} value={fmt(num(f.amount))} />)}
+        <div style={{ borderTop: `1px solid ${C.line}`, margin: "6px 0" }} />
+        <LedgerRow label="Coût de la job" value={fmt(calc.coutJob)} strong />
+        <div style={{ borderTop: `2px solid ${C.ink}`, margin: "8px 0 4px" }} />
+        <LedgerRow label="Profit (vente − coût)" value={fmt(calc.profit)} strong color={profitColor} />
+      </Section>
+
+      <button onClick={addJob} className="pop" disabled={num(current.vente) <= 0}
+        style={{ width: "100%", background: num(current.vente) > 0 ? C.amber : C.line, color: num(current.vente) > 0 ? C.ink : C.muted, border: "none", borderRadius: 14, padding: "15px", fontFamily: grotesk, fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 22 }}>
+        <Save size={18} /> Sauvegarder dans la semaine
+      </button>
+
+      <Eyebrow>Jobs de la semaine</Eyebrow>
+      <div style={{ height: 10 }} />
+      <WeekNav week={week} setWeek={setWeek} />
+      {weekJobs.length > 0 && (
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <SummaryChip label="Ventes" value={fmt(weekStats.ventes)} />
+          <SummaryChip label="Profit" value={fmt(weekStats.profit)} color={weekStats.profit >= 0 ? C.green : C.red} />
+          <SummaryChip label="Jobs" value={String(weekStats.nb)} />
+        </div>
+      )}
+      {weekJobs.length === 0 ? (
+        <div style={{ background: C.panel, border: `1px dashed ${C.line}`, borderRadius: 14, padding: "22px 16px", textAlign: "center", color: C.muted, fontFamily: grotesk, fontSize: 13.5 }}>Aucune job cette semaine. Remplis une job en haut et sauvegarde-la.</div>
+      ) : weekJobs.map((j) => (
+        <div key={j.id} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "13px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{j.name}</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: C.muted, marginTop: 2 }}>Vente {fmt(j.result.vente)} · {vName(j.vendeurId)}</div>
+          </div>
+          <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 15, color: j.result.profit >= 0 ? C.green : C.red }}>{fmt(j.result.profit)}</div>
+          <IconBtn onClick={() => delJob(j.id)} label="Supprimer"><Trash2 size={17} /></IconBtn>
+        </div>
+      ))}
+    </>
+  );
+}
+function MiniStat({ label, value }) {
+  return <div><div style={{ fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,246,239,.55)", fontWeight: 600 }}>{label}</div><div style={{ fontFamily: mono, fontSize: 14.5, color: C.paper, marginTop: 2, fontWeight: 700 }}>{value}</div></div>;
+}
+function SummaryChip({ label, value, color }) {
+  return <div style={{ flex: 1, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 12px" }}><div style={{ fontFamily: grotesk, fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted, fontWeight: 600 }}>{label}</div><div style={{ fontFamily: mono, fontSize: 15, fontWeight: 700, color: color || C.ink, marginTop: 2 }}>{value}</div></div>;
+}
+
+/* ---------------------------- Onglet Dépenses -------------------------- */
+function ExpensesTab({ week, setWeek, exp, setWeekExp, roster, bd, weekStats }) {
+  const setInstallJobs = (id, v) => setWeekExp((w) => ({ ...w, installJobs: { ...(w.installJobs || {}), [id]: v } }));
+  const setInstallExtras = (id, rows) => setWeekExp((w) => ({ ...w, installExtras: { ...(w.installExtras || {}), [id]: rows } }));
+  const setSec = (id, v) => setWeekExp((w) => ({ ...w, secOverride: { ...(w.secOverride || {}), [id]: v } }));
+  const setDiv = (id, v) => setWeekExp((w) => ({ ...w, diversOverride: { ...(w.diversOverride || {}), [id]: v } }));
+  const setField = (k, v) => setWeekExp((w) => ({ ...w, [k]: v }));
+  const extra = exp.extraDivers || [];
+  const setExtra = (rows) => setWeekExp((w) => ({ ...w, extraDivers: rows }));
+
+  return (
+    <>
+      <WeekNav week={week} setWeek={setWeek} />
+      <div style={{ background: C.ink, borderRadius: 18, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ color: C.amber, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Dépensé cette semaine</div>
+        <div style={{ fontFamily: mono, fontSize: 34, fontWeight: 700, color: C.paper, marginTop: 4 }}>{fmt(weekStats.depenses)}</div>
+      </div>
+
+      <Section title="Installateurs (payés par job)">
+        {roster.installateurs.length === 0 ? <Hint>Ajoute tes installateurs dans <b>Réglages</b> — noms, taux et recruteurs sont sauvegardés d'une semaine à l'autre.</Hint>
+          : bd.installers.map((i) => (
+            <div key={i.id} style={{ marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${C.lineSoft}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: grotesk, fontSize: 14.5, fontWeight: 600, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{i.name}</div>
+                  <div style={{ fontFamily: mono, fontSize: 11.5, color: C.muted }}>{fmt(i.rate)}/job × {i.jobs} = {fmt(i.ownPay)}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input inputMode="numeric" value={(exp.installJobs || {})[i.id] ?? ""} onChange={(e) => setInstallJobs(i.id, e.target.value)} placeholder="0"
+                    style={{ width: 62, textAlign: "center", border: `1px solid ${C.line}`, borderRadius: 10, outline: "none", padding: "11px 6px", fontFamily: mono, fontSize: 15, color: C.ink, background: C.panel }} />
+                  <span style={{ fontFamily: grotesk, fontSize: 12, color: C.muted }}>jobs</span>
+                </div>
+              </div>
+              {i.overrideEarned > 0 && <div style={{ fontFamily: mono, fontSize: 12, color: C.amberDeep, marginTop: 6 }}>+ {fmt(i.overrideEarned)} sur les jobs de ses recrues</div>}
+              <div style={{ marginTop: 8 }}>
+                <ExtraRows rows={i.extraList} onChange={(rows) => setInstallExtras(i.id, rows)} placeholder="Extra (bonus, kilométrage…)" addLabel="Ajouter un extra à sa paye" />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <span style={{ fontFamily: mono, fontSize: 13.5, fontWeight: 700, color: C.ink }}>Paye totale : {fmt(i.pay)}</span>
+              </div>
+            </div>
+          ))}
+      </Section>
+
+      <Section title="Secrétaires (salaire hebdomadaire)">
+        {roster.secretaires.length === 0 ? <Hint>Ajoute tes secrétaires dans <b>Réglages</b>.</Hint>
+          : bd.secs.map((s) => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span style={{ flex: 1, fontFamily: grotesk, fontSize: 14, fontWeight: 600, color: C.ink }}>{s.name}</span>
+              <AmountBox value={(exp.secOverride || {})[s.id] !== undefined ? exp.secOverride[s.id] : String(s.weekly || "")} onChange={(v) => setSec(s.id, v)} width={120} />
+            </div>
+          ))}
+      </Section>
+
+      <Section title="Matériel">
+        <Line label="Nombre de sacs achetés">
+          <input inputMode="numeric" value={exp.sacsCount} onChange={(e) => setField("sacsCount", e.target.value)} placeholder="0"
+            style={{ width: 90, textAlign: "right", border: `1px solid ${C.line}`, borderRadius: 10, outline: "none", padding: "11px 12px", fontFamily: mono, fontSize: 15, color: C.ink, background: C.panel, boxSizing: "border-box" }} />
+        </Line>
+        <Line label="Coût des sacs"><AmountBox value={exp.sacsCost} onChange={(v) => setField("sacsCost", v)} width={120} /></Line>
+        <Line label="Machine à souffler"><AmountBox value={exp.machine} onChange={(v) => setField("machine", v)} width={120} /></Line>
+      </Section>
+
+      <Section title="Véhicule & déplacements">
+        <Line label="Camion"><AmountBox value={exp.camion} onChange={(v) => setField("camion", v)} width={120} /></Line>
+        <Line label="Gaz"><AmountBox value={exp.gaz} onChange={(v) => setField("gaz", v)} width={120} /></Line>
+      </Section>
+
+      <Section title="Marketing">
+        <Line label="Publicité (Facebook, etc.)"><AmountBox value={exp.publicite} onChange={(v) => setField("publicite", v)} width={120} /></Line>
+      </Section>
+
+      <Section title="Frais divers">
+        {roster.divers.length > 0 && bd.divers.map((d) => (
+          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <span style={{ flex: 1, fontFamily: grotesk, fontSize: 14, color: C.ink }}>{d.label}</span>
+            <AmountBox value={(exp.diversOverride || {})[d.id] !== undefined ? exp.diversOverride[d.id] : String(d.def || "")} onChange={(v) => setDiv(d.id, v)} width={120} />
+          </div>
+        ))}
+        <ExtraRows rows={extra} onChange={setExtra} placeholder="Frais ponctuel (cette semaine)" addLabel="Ajouter un frais ponctuel" />
+        <div style={{ height: 8 }} /><Hint>Les frais divers <b>récurrents</b> se sauvegardent dans <b>Réglages</b>.</Hint>
+      </Section>
+
+      <Section title="Bilan de la semaine">
+        <LedgerRow label={`Ventes (${weekStats.nb} jobs)`} value={fmt(weekStats.ventes)} />
+        <LedgerRow label="Profit des jobs" value={fmt(weekStats.profit)} color={weekStats.profit >= 0 ? C.green : C.red} />
+        <LedgerRow label="Dépenses réelles payées" value={`− ${fmt(weekStats.depenses)}`} />
+        <div style={{ borderTop: `2px solid ${C.ink}`, margin: "8px 0 4px" }} />
+        <LedgerRow label="Cash net réel (ventes − dépenses)" value={fmt(weekStats.cashNet)} strong color={weekStats.cashNet >= 0 ? C.green : C.red} />
+        {weekStats.nb > 0 && <div style={{ marginTop: 12 }}><Hint>Coût réel moyen par job cette semaine : <b style={{ color: C.ink }}>{fmt(weekStats.coutReelMoyen)}</b>.</Hint></div>}
+      </Section>
+    </>
+  );
+}
+
+/* --------------------------- Onglet Pay Protech ------------------------ */
+function PayProtechTab({ week, setWeek, exp, setWeekExp, payProtech, ventes, downloadPDF }) {
+  const pp = exp.payProtech || { caOverride: "", payeParProtech: [], cashRecu: [] };
+  const setPP = (patch) => setWeekExp((w) => ({ ...w, payProtech: { ...(w.payProtech || { caOverride: "", payeParProtech: [], cashRecu: [] }), ...patch } }));
+  return (
+    <>
+      <WeekNav week={week} setWeek={setWeek} />
+      <div style={{ background: C.ink, borderRadius: 18, padding: "20px", marginBottom: 16 }}>
+        <div style={{ color: C.amber, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Protech nous doit</div>
+        <div style={{ fontFamily: mono, fontSize: 38, fontWeight: 700, lineHeight: 1.05, marginTop: 6, color: payProtech.doit >= 0 ? "#7BD79E" : "#F0908A" }}>{fmt(payProtech.doit)}</div>
+        <div style={{ fontFamily: grotesk, fontSize: 12.5, color: "rgba(250,246,239,.6)", marginTop: 6 }}>à facturer par virement Interac</div>
+      </div>
+      <Section title="Chiffre d'affaires de la semaine">
+        <Line label="CA" sub={`auto : ${fmt(ventes)}`}><AmountBox value={pp.caOverride} onChange={(v) => setPP({ caOverride: v })} width={140} placeholder={String(ventes.toFixed(2))} /></Line>
+        <Hint>Laisse vide pour prendre automatiquement le total des ventes de la semaine.</Hint>
+      </Section>
+      <Section title="Payé par Protech (leur bord)">
+        <ExtraRows rows={pp.payeParProtech || []} onChange={(rows) => setPP({ payeParProtech: rows })} placeholder="Ex. matériel, camion…" addLabel="Ajouter une dépense payée par Protech" />
+      </Section>
+      <Section title="Cash déjà reçu (notre bord)">
+        <ExtraRows rows={pp.cashRecu || []} onChange={(rows) => setPP({ cashRecu: rows })} placeholder="Ex. cash client, dépôt…" addLabel="Ajouter un montant reçu" />
+      </Section>
+      <Section title="Calcul">
+        <LedgerRow label="Chiffre d'affaires" value={fmt(payProtech.ca)} strong />
+        <LedgerRow label="Payé par Protech" value={`− ${fmt(payProtech.paye)}`} />
+        <LedgerRow label="Cash déjà reçu" value={`− ${fmt(payProtech.cash)}`} />
+        <div style={{ borderTop: `2px solid ${C.ink}`, margin: "8px 0 4px" }} />
+        <LedgerRow label="Protech nous doit" value={fmt(payProtech.doit)} strong color={payProtech.doit >= 0 ? C.green : C.red} />
+      </Section>
+      <button onClick={downloadPDF} className="pop" style={{ width: "100%", background: C.ink, color: C.paper, border: "none", borderRadius: 14, padding: "15px", fontFamily: grotesk, fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20 }}>
+        <Download size={18} /> Télécharger le rapport PDF de la semaine
+      </button>
+      <Hint>Le bouton ouvre l'impression — choisis « Enregistrer en PDF ». Le rapport contient les jobs, les dépenses et le Pay Protech. La section Profit n'y est pas incluse.</Hint>
+    </>
+  );
+}
+
+/* ----------------------------- Onglet Profit --------------------------- */
+function ProfitTab({ week, setWeek, weekJobs, vendeurs, exp, setWeekExp, totalProfit }) {
+  const avances = exp.avances || [];
+  const setAvances = (rows) => setWeekExp((w) => ({ ...w, avances: rows }));
+  const profitOf = (vid) => weekJobs.filter((j) => j.vendeurId === vid).reduce((a, j) => a + (j.result.profit || 0), 0);
+  const avanceOf = (vid) => avances.filter((r) => r.byId === vid).reduce((a, r) => a + num(r.amount), 0);
+  const ids = new Set(vendeurs.map((v) => v.id));
+  const unassigned = weekJobs.filter((j) => !j.vendeurId || !ids.has(j.vendeurId)).reduce((a, j) => a + (j.result.profit || 0), 0);
+  const totalAvances = avances.reduce((a, r) => a + num(r.amount), 0);
+
+  return (
+    <>
+      <WeekNav week={week} setWeek={setWeek} />
+      <div style={{ background: C.ink, borderRadius: 18, padding: "20px", marginBottom: 16 }}>
+        <div style={{ color: C.amber, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Profit total de la semaine</div>
+        <div style={{ fontFamily: mono, fontSize: 38, fontWeight: 700, marginTop: 6, color: totalProfit >= 0 ? "#7BD79E" : "#F0908A" }}>{fmt(totalProfit)}</div>
+        <div style={{ fontFamily: grotesk, fontSize: 12.5, color: "rgba(250,246,239,.6)", marginTop: 6 }}>somme des commissions (vente − coût) de toutes les jobs</div>
+      </div>
+
+      {vendeurs.map((v) => {
+        const comm = profitOf(v.id); const av = avanceOf(v.id);
+        return (
+          <Section key={v.id} title={`Pay ${v.name}`}>
+            <LedgerRow label="Commissions (ses jobs)" value={fmt(comm)} color={comm >= 0 ? C.green : C.red} />
+            <LedgerRow label="Frais avancés à reprendre" value={fmt(av)} color={C.amberDeep} />
+            <div style={{ borderTop: `2px solid ${C.ink}`, margin: "8px 0 4px" }} />
+            <LedgerRow label={`Total à remettre à ${v.name}`} value={fmt(comm + av)} strong />
+          </Section>
+        );
+      })}
+
+      {unassigned !== 0 && (
+        <Section title="Jobs non assignées">
+          <LedgerRow label="Profit non assigné à un vendeur" value={fmt(unassigned)} color={C.muted} />
+          <div style={{ height: 8 }} /><Hint>Assigne ces jobs à un vendeur dans l'onglet <b>Job</b> pour les répartir.</Hint>
+        </Section>
+      )}
+
+      <Section title="Frais avancés (à reprendre)">
+        <AvanceRows rows={avances} vendeurs={vendeurs} onChange={setAvances} />
+        <div style={{ borderTop: `1px solid ${C.line}`, margin: "10px 0 4px" }} />
+        <LedgerRow label="Total avancé à reprendre cette semaine" value={fmt(totalAvances)} strong color={C.amberDeep} />
+      </Section>
+
+      <Hint>Cette section (Profit + frais avancés) reste privée : elle n'apparaît <b>pas</b> dans le rapport PDF.</Hint>
+      <div style={{ height: 20 }} />
+    </>
+  );
+}
+function AvanceRows({ rows, vendeurs, onChange }) {
+  const upd = (id, key, v) => onChange(rows.map((r) => (r.id === id ? { ...r, [key]: v } : r)));
+  const add = () => onChange([...rows, { id: "a" + Date.now() + Math.floor(Math.random() * 999), label: "", amount: "", byId: "" }]);
+  const del = (id) => onChange(rows.filter((r) => r.id !== id));
+  return (
+    <>
+      {rows.map((r) => (
+        <div key={r.id} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <TextInput value={r.label} onChange={(v) => upd(r.id, "label", v)} placeholder="Description (matériel, dépôt…)" flex={1} />
+            <AmountBox value={r.amount} onChange={(v) => upd(r.id, "amount", v)} width={110} />
+            <IconBtn onClick={() => del(r.id)} label="Supprimer"><Trash2 size={17} /></IconBtn>
+          </div>
+          <div>
+            <div style={{ fontFamily: grotesk, fontSize: 11.5, color: C.muted, marginBottom: 4 }}>Avancé par</div>
+            <Select value={r.byId || ""} onChange={(v) => upd(r.id, "byId", v)}>
+              <option value="">— personne —</option>
+              {vendeurs.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </Select>
+          </div>
+        </div>
+      ))}
+      <AddButton onClick={add}>Ajouter un frais avancé</AddButton>
+    </>
+  );
+}
+
+/* ---------------------------- Onglet Réglages -------------------------- */
+function SettingsTab({ settings, setSettings }) {
+  const setCost = (k) => (v) => setSettings((s) => ({ ...s, costs: { ...s.costs, [k]: v } }));
+  const updFee = (id, key, v) => setSettings((s) => ({ ...s, fixedFees: s.fixedFees.map((f) => (f.id === id ? { ...f, [key]: v } : f)) }));
+  const addFee = () => setSettings((s) => ({ ...s, fixedFees: [...s.fixedFees, { id: "f" + Date.now(), label: "", amount: "" }] }));
+  const delFee = (id) => setSettings((s) => ({ ...s, fixedFees: s.fixedFees.filter((f) => f.id !== id) }));
+  const setRoster = (key, rows) => setSettings((s) => ({ ...s, roster: { ...s.roster, [key]: rows } }));
+
+  return (
+    <>
+      <Section title="Coûts unitaires du matériel">
+        <MoneyField label="Coût par sac de laine" value={settings.costs.sac} onChange={setCost("sac")} />
+        <MoneyField label="Coût par styrovent" value={settings.costs.styrovent} onChange={setCost("styrovent")} />
+        <MoneyField label="Coût par carton" value={settings.costs.carton} onChange={setCost("carton")} />
+      </Section>
+
+      <Section title="Frais fixes ajoutés à chaque job">
+        {settings.fixedFees.map((f) => (
+          <div key={f.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+            <TextInput value={f.label} onChange={(v) => updFee(f.id, "label", v)} placeholder="Nom du frais" flex={1} />
+            <AmountBox value={f.amount} onChange={(v) => updFee(f.id, "amount", v)} width={110} />
+            <IconBtn onClick={() => delFee(f.id)} label="Supprimer"><Trash2 size={17} /></IconBtn>
+          </div>
+        ))}
+        <AddButton onClick={addFee}>Ajouter un frais fixe</AddButton>
+        <div style={{ height: 10 }} /><Hint>Ces montants s'ajoutent au coût de <b>chaque</b> job. Le profit d'une job = vente − ce coût complet.</Hint>
+      </Section>
+
+      <Section title="Vendeurs (sauvegardés)">
+        <RosterRows rows={settings.roster.vendeurs} nameKey="name" onChange={(rows) => setRoster("vendeurs", rows)} namePlaceholder="Nom du vendeur" addLabel="Ajouter un vendeur" nameOnly />
+        <div style={{ height: 10 }} /><Hint>Chaque job s'assigne à un vendeur. Leurs commissions se répartissent dans l'onglet <b>Profit</b>.</Hint>
+      </Section>
+
+      <Section title="Installateurs (sauvegardés)">
+        <InstallerRoster rows={settings.roster.installateurs} onChange={(rows) => setRoster("installateurs", rows)} />
+        <div style={{ height: 10 }} /><Hint>« Recruté par » : le recruteur touche un montant fixe par job que sa recrue fait (ex. 25 $/job), ajouté à sa paye.</Hint>
+      </Section>
+
+      <Section title="Secrétaires (sauvegardées)">
+        <RosterRows rows={settings.roster.secretaires} nameKey="name" amountKey="weekly" amountPrefix="$" namePlaceholder="Nom de la secrétaire" amountLabel="/sem" onChange={(rows) => setRoster("secretaires", rows)} addLabel="Ajouter une secrétaire" />
+      </Section>
+
+      <Section title="Frais divers récurrents (sauvegardés)">
+        <RosterRows rows={settings.roster.divers} nameKey="label" amountKey="amount" amountPrefix="$" namePlaceholder="Nom du frais" amountLabel="/sem" onChange={(rows) => setRoster("divers", rows)} addLabel="Ajouter un frais récurrent" />
+      </Section>
+    </>
+  );
+}
+function InstallerRoster({ rows, onChange }) {
+  const upd = (id, key, v) => onChange(rows.map((r) => (r.id === id ? { ...r, [key]: v } : r)));
+  const add = () => onChange([...rows, { id: "i" + Date.now() + Math.floor(Math.random() * 999), name: "", rate: "", recruiterId: "", overridePerJob: "" }]);
+  const del = (id) => onChange(rows.filter((r) => r.id !== id));
+  return (
+    <>
+      {rows.map((r) => {
+        const others = rows.filter((o) => o.id !== r.id);
+        return (
+          <div key={r.id} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+              <TextInput value={r.name || ""} onChange={(v) => upd(r.id, "name", v)} placeholder="Nom de l'installateur" flex={1} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <AmountBox value={r.rate || ""} onChange={(v) => upd(r.id, "rate", v)} width={98} />
+                <span style={{ fontFamily: grotesk, fontSize: 11, color: C.muted }}>/job</span>
+              </div>
+              <IconBtn onClick={() => del(r.id)} label="Supprimer"><Trash2 size={17} /></IconBtn>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: grotesk, fontSize: 11.5, color: C.muted, marginBottom: 4 }}>Recruté par</div>
+                <Select value={r.recruiterId || ""} onChange={(v) => upd(r.id, "recruiterId", v)}>
+                  <option value="">— personne —</option>
+                  {others.map((o) => <option key={o.id} value={o.id}>{o.name || "Installateur"}</option>)}
+                </Select>
+              </div>
+              <div style={{ width: 116 }}>
+                <div style={{ fontFamily: grotesk, fontSize: 11.5, color: C.muted, marginBottom: 4 }}>$/job au recruteur</div>
+                <AmountBox value={r.overridePerJob || ""} onChange={(v) => upd(r.id, "overridePerJob", v)} width="100%" placeholder="25" />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <AddButton onClick={add}>Ajouter un installateur</AddButton>
+    </>
+  );
+}
+function RosterRows({ rows, nameKey, amountKey, amountPrefix, amountLabel, namePlaceholder, onChange, addLabel, nameOnly }) {
+  const upd = (id, key, v) => onChange(rows.map((r) => (r.id === id ? { ...r, [key]: v } : r)));
+  const add = () => onChange([...rows, { id: "r" + Date.now() + Math.floor(Math.random() * 999), [nameKey]: "", ...(amountKey ? { [amountKey]: "" } : {}) }]);
+  const del = (id) => onChange(rows.filter((r) => r.id !== id));
+  return (
+    <>
+      {rows.map((r) => (
+        <div key={r.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+          <TextInput value={r[nameKey] || ""} onChange={(v) => upd(r.id, nameKey, v)} placeholder={namePlaceholder} flex={1} />
+          {!nameOnly && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <AmountBox value={r[amountKey] || ""} onChange={(v) => upd(r.id, amountKey, v)} prefix={amountPrefix} width={104} />
+              <span style={{ fontFamily: grotesk, fontSize: 11, color: C.muted, width: 30 }}>{amountLabel}</span>
+            </div>
+          )}
+          <IconBtn onClick={() => del(r.id)} label="Supprimer"><Trash2 size={17} /></IconBtn>
+        </div>
+      ))}
+      <AddButton onClick={add}>{addLabel}</AddButton>
+    </>
+  );
+}
+
+/* ------------------------------ Rapport PDF ---------------------------- */
+function PrintReport({ week, weekJobs, bd, weekStats, payProtech }) {
+  const th = { textAlign: "left", borderBottom: "2px solid #000", padding: "6px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" };
+  const td = { padding: "6px 8px", borderBottom: "1px solid #ccc", fontSize: 12 };
+  const tdr = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" };
+  const H = ({ children }) => <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", margin: "22px 0 8px", borderBottom: "1px solid #000", paddingBottom: 3 }}>{children}</div>;
+  const row = (label, value, bold) => <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontWeight: bold ? 700 : 400, fontSize: 12.5 }}><span>{label}</span><span style={{ fontVariantNumeric: "tabular-nums" }}>{value}</span></div>;
+  return (
+    <div className="report" style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", padding: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "3px solid #000", paddingBottom: 8 }}>
+        <div><div style={{ fontSize: 22, fontWeight: 800 }}>Isolation Protech</div><div style={{ fontSize: 13 }}>Division Montréal — Rapport hebdomadaire</div></div>
+        <div style={{ textAlign: "right", fontSize: 12 }}>Semaine du {weekLabel(week)}</div>
+      </div>
+
+      <H>Jobs de la semaine</H>
+      {weekJobs.length === 0 ? <div style={{ fontSize: 12 }}>Aucune job.</div> : (
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr><th style={th}>Job</th><th style={{ ...th, textAlign: "right" }}>Vente</th><th style={{ ...th, textAlign: "right" }}>Coût</th><th style={{ ...th, textAlign: "right" }}>Profit</th></tr></thead>
+          <tbody>
+            {weekJobs.map((j) => <tr key={j.id}><td style={td}>{j.name}</td><td style={tdr}>{fmt(j.result.vente)}</td><td style={tdr}>{fmt(j.result.coutJob)}</td><td style={tdr}>{fmt(j.result.profit)}</td></tr>)}
+            <tr><td style={{ ...td, fontWeight: 700 }}>Total ({weekStats.nb})</td><td style={{ ...tdr, fontWeight: 700 }}>{fmt(weekStats.ventes)}</td><td style={td}></td><td style={{ ...tdr, fontWeight: 700 }}>{fmt(weekStats.profit)}</td></tr>
+          </tbody>
+        </table>
+      )}
+
+      <H>Dépenses de la semaine</H>
+      {bd.installers.filter((i) => i.pay > 0).map((i) => row(`Installateur — ${i.name} (${i.jobs}×${fmt(i.rate)}${i.extras ? ` +extra ${fmt(i.extras)}` : ""}${i.overrideEarned ? ` +recrues ${fmt(i.overrideEarned)}` : ""})`, fmt(i.pay)))}
+      {bd.secs.filter((s) => s.pay > 0).map((s) => row(`Secrétaire — ${s.name}`, fmt(s.pay)))}
+      {bd.sacsCost > 0 && row(`Sacs${bd.sacsCount ? ` (${bd.sacsCount})` : ""}`, fmt(bd.sacsCost))}
+      {bd.machine > 0 && row("Machine à souffler", fmt(bd.machine))}
+      {bd.camion > 0 && row("Camion", fmt(bd.camion))}
+      {bd.gaz > 0 && row("Gaz", fmt(bd.gaz))}
+      {bd.publicite > 0 && row("Publicité", fmt(bd.publicite))}
+      {bd.divers.filter((d) => d.pay > 0).map((d) => row(`Divers — ${d.label}`, fmt(d.pay)))}
+      {bd.extra.filter((d) => d.pay > 0).map((d) => row(`Divers — ${d.label}`, fmt(d.pay)))}
+      <div style={{ borderTop: "1px solid #000", marginTop: 6 }} />
+      {row("Total des dépenses", fmt(bd.total), true)}
+
+      <H>Bilan</H>
+      {row("Ventes", fmt(weekStats.ventes))}
+      {row("Profit des jobs", fmt(weekStats.profit))}
+      {row("Dépenses réelles", `− ${fmt(weekStats.depenses)}`)}
+      {row("Cash net réel", fmt(weekStats.cashNet), true)}
+      {weekStats.nb > 0 && row("Coût réel moyen par job", fmt(weekStats.coutReelMoyen))}
+
+      <H>Pay Protech</H>
+      {row("Chiffre d'affaires", fmt(payProtech.ca))}
+      {row("Payé par Protech", `− ${fmt(payProtech.paye)}`)}
+      {row("Cash déjà reçu", `− ${fmt(payProtech.cash)}`)}
+      <div style={{ borderTop: "1px solid #000", marginTop: 6 }} />
+      {row("Protech nous doit (Interac)", fmt(payProtech.doit), true)}
+
+      <div style={{ marginTop: 26, fontSize: 10, color: "#555", borderTop: "1px solid #ccc", paddingTop: 6 }}>Généré le {new Date().toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" })} · Isolation Protech Division Montréal</div>
+    </div>
+  );
+}
+
+function Auth(){
+  const [mode,setMode]=useState("login");
+  const [email,setEmail]=useState("");
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState("");
+  const [msg,setMsg]=useState("");
+  const [busy,setBusy]=useState(false);
+  const submit=async()=>{
+    setErr("");setMsg("");
+    if(!email||!pw){setErr("Entre ton courriel et ton mot de passe.");return;}
+    setBusy(true);
+    try{
+      if(mode==="login"){
+        const {error}=await db.auth.signInWithPassword({email,password:pw});
+        if(error) setErr("Courriel ou mot de passe invalide.");
+      }else{
+        const {error}=await db.auth.signUp({email,password:pw});
+        if(error) setErr(error.message);
+        else setMsg("Compte cree. Si une confirmation par courriel est demandee, valide-la puis connecte-toi.");
+      }
+    } finally { setBusy(false); }
+  };
+  const inp={width:"100%",boxSizing:"border-box",border:"1px solid "+C.line,borderRadius:10,outline:"none",padding:"13px 12px",fontFamily:grotesk,fontSize:15,color:C.ink,background:C.panel};
+  const Field=({label,children})=>(<label style={{display:"block",marginBottom:14}}><div style={{fontFamily:grotesk,fontSize:13,color:C.slate,marginBottom:6,fontWeight:500}}>{label}</div>{children}</label>);
+  return (<div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:grotesk}}>
+    <div style={{width:"100%",maxWidth:380}}>
+      <div style={{background:C.ink,color:C.paper,borderRadius:18,padding:"22px 22px 24px",marginBottom:18}}>
+        <div style={{fontSize:24,fontWeight:700,lineHeight:1.1}}>Isolation Protech</div>
+        <div style={{fontFamily:mono,fontSize:13,color:"rgba(250,246,239,.65)",marginTop:3}}>Division Montreal</div>
+      </div>
+      <div style={{background:C.panel,border:"1px solid "+C.line,borderRadius:16,padding:20}}>
+        <div style={{fontFamily:grotesk,fontSize:16,fontWeight:700,marginBottom:14,color:C.ink}}>{mode==="login"?"Connexion":"Creer un compte"}</div>
+        <Field label="Courriel"><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="toi@exemple.com" style={inp}/></Field>
+        <Field label="Mot de passe"><input type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="********" style={inp}/></Field>
+        {err && <div style={{color:C.red,fontSize:13,marginBottom:10}}>{err}</div>}
+        {msg && <div style={{color:C.green,fontSize:13,marginBottom:10}}>{msg}</div>}
+        <button onClick={submit} disabled={busy} style={{width:"100%",background:C.amber,color:C.ink,border:"none",borderRadius:12,padding:"14px",fontFamily:grotesk,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"...":mode==="login"?"Se connecter":"Creer le compte"}</button>
+        <button onClick={()=>{setMode(mode==="login"?"signup":"login");setErr("");setMsg("");}} style={{width:"100%",background:"transparent",border:"none",color:C.amberDeep,fontFamily:grotesk,fontSize:13,fontWeight:600,marginTop:12,cursor:"pointer"}}>{mode==="login"?"Pas encore de compte ? En creer un":"J'ai deja un compte"}</button>
+      </div>
+    </div>
+  </div>);
+}
+
+function App(){
+  const [session,setSession]=useState(undefined);
+  useEffect(()=>{
+    db.auth.getSession().then(({data})=>setSession(data.session));
+    const {data:sub}=db.auth.onAuthStateChange((_e,s)=>setSession(s));
+    return ()=>sub.subscription.unsubscribe();
+  },[]);
+  if(session===undefined) return <div style={{minHeight:"100vh",background:"#FAF6EF"}}/>;
+  if(!session) return <Auth/>;
+  return <CalculatorApp onSignOut={()=>db.auth.signOut()} />;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+</script>
+</body>
+</html>
